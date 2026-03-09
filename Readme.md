@@ -1,1 +1,1 @@
-Heart Diseases priction using support vector machine 
+Heart Diseases prediction using support vector machine 
