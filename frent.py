@@ -4,6 +4,7 @@ import pandas as pd
 import pickle
 import sqlite3
 from datetime import datetime
+import io
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import red, green
@@ -103,104 +104,104 @@ def predict_risk(age,sex,chest_pain,blood_sugar,max_hr,exercise_angina,oldpeak,s
 # ---------------- PDF REPORT ----------------
 
 def create_pdf(data,result,recommendations,prob):
+    """Generate PDF in memory and return bytes instead of saving to disk."""
 
-    filename=f"{data['Patient ID']}_report.pdf"
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
 
-    c=canvas.Canvas(filename,pagesize=letter)
-
-    y=760
+    y = 760
 
     # Title
-    c.setFont("Helvetica-Bold",20)
-    c.drawCentredString(300,y,"HEART DISEASE MEDICAL REPORT")
+    c.setFont("Helvetica-Bold", 20)
+    c.drawCentredString(300, y, "HEART DISEASE MEDICAL REPORT")
 
-    y-=40
+    y -= 40
 
-    c.setFont("Helvetica",10)
-    c.drawString(40,y,f"Report Generated: {datetime.now().strftime('%d %b %Y')}")
+    c.setFont("Helvetica", 10)
+    c.drawString(40, y, f"Report Generated: {datetime.now().strftime('%d %b %Y')}")
 
-    y-=30
+    y -= 30
 
     # Patient Details
-    c.setFont("Helvetica-Bold",14)
-    c.drawString(40,y,"Patient Details")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, y, "Patient Details")
 
-    y-=20
-    c.setFont("Helvetica",12)
+    y -= 20
+    c.setFont("Helvetica", 12)
 
-    for k in ["Patient ID","Name","Age","Gender"]:
-        c.drawString(60,y,f"{k}: {data[k]}")
-        y-=18
+    for k in ["Patient ID", "Name", "Age", "Gender"]:
+        c.drawString(60, y, f"{k}: {data[k]}")
+        y -= 18
 
-    y-=10
+    y -= 10
 
     # Clinical Inputs
-    c.setFont("Helvetica-Bold",14)
-    c.drawString(40,y,"Clinical Measurements")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, y, "Clinical Measurements")
 
-    y-=20
-    c.setFont("Helvetica",12)
+    y -= 20
+    c.setFont("Helvetica", 12)
 
-    inputs=[
+    inputs = [
         "Chest Pain Type",
         "Exercise Angina",
         "Max Heart Rate",
         "ST Depression",
         "ST Slope",
-        "Fasting Blood Sugar"
+        "Fasting Blood Sugar",
     ]
 
     for i in inputs:
-        c.drawString(60,y,f"{i}: {data[i]}")
-        y-=18
+        c.drawString(60, y, f"{i}: {data[i]}")
+        y -= 18
 
-    y-=20
+    y -= 20
 
     # Result
-    c.setFont("Helvetica-Bold",16)
+    c.setFont("Helvetica-Bold", 16)
 
-    if result=="High Risk":
+    if result == "High Risk":
         c.setFillColor(red)
     else:
         c.setFillColor(green)
 
-    c.drawString(40,y,f"Prediction Result: {result}")
+    c.drawString(40, y, f"Prediction Result: {result}")
 
     c.setFillColor("black")
 
-    y-=20
+    y -= 20
 
     if prob is not None:
+        c.setFont("Helvetica", 12)
+        c.drawString(60, y, f"Disease Probability: {round(prob[1] * 100, 2)} %")
+        y -= 18
 
-        c.setFont("Helvetica",12)
-        c.drawString(60,y,f"Disease Probability: {round(prob[1]*100,2)} %")
-        y-=18
+        c.drawString(60, y, f"No Disease Probability: {round(prob[0] * 100, 2)} %")
 
-        c.drawString(60,y,f"No Disease Probability: {round(prob[0]*100,2)} %")
-
-    y-=25
+    y -= 25
 
     # Recommendations
-    c.setFont("Helvetica-Bold",14)
-    c.drawString(40,y,"Recommendations")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(40, y, "Recommendations")
 
-    y-=20
-    c.setFont("Helvetica",11)
+    y -= 20
+    c.setFont("Helvetica", 11)
 
     for r in recommendations:
-        c.drawString(60,y,f"• {r}")
-        y-=16
+        c.drawString(60, y, f"• {r}")
+        y -= 16
 
-    y-=30
+    y -= 30
 
     # Disclaimer
-    c.setFont("Helvetica-Oblique",9)
-    c.drawString(40,y,"Disclaimer: This AI prediction is for educational purposes only.")
-    c.drawString(40,y-12,"Consult a qualified cardiologist for medical advice.")
+    c.setFont("Helvetica-Oblique", 9)
+    c.drawString(40, y, "Disclaimer: This AI prediction is for educational purposes only.")
+    c.drawString(40, y - 12, "Consult a qualified cardiologist for medical advice.")
 
     c.save()
 
-    return filename
+    buffer.seek(0)
+    return buffer.getvalue()
 
 # ---------------- UI ----------------
 
@@ -309,10 +310,15 @@ if menu=="Prediction":
         df=pd.DataFrame(list(report_data.items()),columns=["Field","Value"])
         st.table(df)
 
-        pdf=create_pdf(report_data,result,recommendations,prob)
+        # generate PDF bytes and stream directly to user
+        pdf_bytes = create_pdf(report_data, result, recommendations, prob)
 
-        with open(pdf,"rb") as f:
-            st.download_button("Download Medical Report",f,file_name=pdf)
+        st.download_button(
+            "Download Medical Report",
+            data=pdf_bytes,
+            file_name=f"{patient_id}_report.pdf",
+            mime="application/pdf",
+        )
 
 # ---------------- ADMIN DASHBOARD ----------------
 
