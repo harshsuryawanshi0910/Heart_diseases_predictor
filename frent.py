@@ -19,6 +19,7 @@ cursor = conn.cursor()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS patients(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
+               
 patient_id TEXT,
 name TEXT,
 age INTEGER,
