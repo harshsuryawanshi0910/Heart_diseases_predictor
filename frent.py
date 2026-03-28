@@ -380,7 +380,7 @@ if menu == "Prediction":
                 shap.summary_plot(shap_vals, features_arr, feature_names=feature_order, show=False)
                 st.pyplot(fig)
 
-# ------------------- Admin Dashboard -------------------
+# ---- Admin Dashboard -------
 elif menu == "Admin Dashboard":
     st.title(" Admin Dashboard")
 
